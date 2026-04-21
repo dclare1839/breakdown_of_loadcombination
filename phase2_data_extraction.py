@@ -40,9 +40,44 @@ class ModelExtractor:
         "WL": "W",   # Wind Load          → Variable (Wind)
         "EL": "E",   # Earthquake         → Accidental
         "TL": "T",   # Temperature        → Variable (Thermal)
+        "SL": "S",   # Snow Load          → Variable (Snow)
         "PS": "G",   # Prestress          → Permanent
         "RS": "G",   # Settlement         → Permanent
     }
+
+    # Civil NX 타입 코드 → EN1990_Category 기본 매핑 (Table A1.1 세분화)
+    CATEGORY_DEFAULT_MAP = {
+        "ST": "G",     "CS": "G",   "PS": "G",  "RS": "G",
+        "LV": "Cat_B", "WL": "Wind","TL": "Temp","SL": "Snow_Lo", "EL": "E",
+    }
+
+    # LC 이름 소문자 키워드 → EN1990_Category 자동 추론
+    KEYWORD_CATEGORY_MAP = {
+        "residential": "Cat_A", "domestic": "Cat_A",
+        "office"     : "Cat_B",
+        "congregation": "Cat_C", "assembly": "Cat_C", "public": "Cat_C",
+        "shopping"   : "Cat_D", "retail"  : "Cat_D", "shop"  : "Cat_D",
+        "storage"    : "Cat_E", "warehouse": "Cat_E",
+        "parking"    : "Cat_F", "car"     : "Cat_F",
+        "truck"      : "Cat_G", "heavy"   : "Cat_G",
+        "roof"       : "Cat_H",
+        "snow_hi"    : "Snow_H1000", "snow_high": "Snow_H1000",
+        "nordic"     : "Snow_H1000_Nordic",
+        "snow"       : "Snow_Lo",
+        "wind"       : "Wind",
+        "temp"       : "Temp", "temperature": "Temp", "thermal": "Temp",
+    }
+
+    def _infer_category(self, lc_name: str, lc_type: str) -> str:
+        """
+        LC 이름 키워드로 EN1990_Category 자동 추론
+        매칭 없으면 타입 코드 기반 기본값 반환
+        """
+        name_lower = lc_name.lower()
+        for keyword, cat in self.KEYWORD_CATEGORY_MAP.items():
+            if keyword in name_lower:
+                return cat
+        return self.CATEGORY_DEFAULT_MAP.get(lc_type, "Qi")
 
     def __init__(self, client: CivilNXClient):
         self.client = client
@@ -59,16 +94,26 @@ class ModelExtractor:
         rows = []
         for lc_id, props in assign.items():
             lc_type = props.get("TYPE", "ST")
+            lc_name = props.get("NAME", f"LC{lc_id}")
+            action  = self.LOAD_TYPE_MAP.get(lc_type, "Qi")
             rows.append({
-                "ID"           : int(lc_id),
-                "Name"         : props.get("NAME", f"LC{lc_id}"),
-                "Type"         : lc_type,
-                "EN1990_Action": self.LOAD_TYPE_MAP.get(lc_type, "Qi"),
-                "Description"  : props.get("DESC", "")
+                "ID"              : int(lc_id),
+                "Name"            : lc_name,
+                "Type"            : lc_type,
+                "EN1990_Action"   : action,
+                "EN1990_Category" : self._infer_category(lc_name, lc_type),
+                "Description"     : props.get("DESC", "")
             })
 
         df = pd.DataFrame(rows).sort_values("ID").reset_index(drop=True)
         print(f"✅ Load Cases: {len(df)}개 로드됨")
+        # 추론된 카테고리 출력
+        var = df[df["EN1990_Action"] != "G"]
+        if not var.empty:
+            print("   ψ 카테고리 자동 추론 결과:")
+            for _, r in var.iterrows():
+                print(f"     {r['Name']:<12} → {r['EN1990_Category']}")
+            print("   ⚠️  Category 재지정 필요 시 df['EN1990_Category'] 직접 수정")
         return df
 
     # ── Nodes ─────────────────────────────────
