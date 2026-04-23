@@ -224,10 +224,8 @@ def run_phase4(client: CivilNXClient,
 # 4. 실행
 # ─────────────────────────────────────────────
 if __name__ == "__main__":
-    client = create_client(
-        base_url="http://127.0.0.1:8090",
-        mapi_key="YOUR_MAPI_KEY_HERE"
-    )
+    from config import get_client
+    client = get_client()
 
     combos = run_phase4(
         client       = client,

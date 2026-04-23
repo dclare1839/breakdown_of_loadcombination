@@ -7,9 +7,8 @@ import sys
 
 # ─── 설정 ─────────────────────────────────────
 CONFIG = {
-    # Phase 1: API 연결
-    "base_url"      : "http://127.0.0.1:8090",
-    "mapi_key"      : "YOUR_MAPI_KEY_HERE",
+    # Phase 1: API 연결 (.env 또는 환경변수로 관리 — config.py 참조)
+    # "base_url" / "mapi_key" 항목 제거: config.py에서 자동 로드
 
     # Phase 3: EN 1990 엔진
     "country"       : "EN",       # EN / DE / PL / HU / RO / HR / AL
@@ -37,9 +36,9 @@ def main():
 
     # ── Phase 1: 연결 ─────────────────────────
     print("\n[Phase 1] API 연결")
-    
     from phase1_connection import create_client, test_connection
-    client = create_client(CONFIG["base_url"], CONFIG["mapi_key"])
+    from config import get_client
+    client = get_client()
     if not test_connection(client):
         print("Civil NX 연결 실패. 프로그램을 종료합니다.")
         sys.exit(1)

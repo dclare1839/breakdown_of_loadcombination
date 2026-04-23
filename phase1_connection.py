@@ -16,8 +16,8 @@ from typing import Optional
 @dataclass
 class CivilNXConfig:
     """Civil NX API 연결 설정"""
-    base_url: str = "http://127.0.0.1:8090"   # Civil NX API Settings에서 확인
-    mapi_key: str = "YOUR_MAPI_KEY_HERE"        # Civil NX API Settings에서 발급
+    base_url: str = ""   # config.py에서 자동 주입
+    mapi_key: str = ""   # config.py에서 자동 주입
     timeout: int = 30
 
 
@@ -122,19 +122,20 @@ def get_model_info(client: CivilNXClient) -> Optional[dict]:
 # ─────────────────────────────────────────────
 # 3. 실행 진입점
 # ─────────────────────────────────────────────
-def create_client(base_url: str = "http://127.0.0.1:8090",
-                  mapi_key: str = "YOUR_MAPI_KEY_HERE") -> CivilNXClient:
+def create_client(base_url: str = "",
+                  mapi_key: str = "") -> CivilNXClient:
     """클라이언트 팩토리 함수 (다른 Phase에서 재사용)"""
-    config = CivilNXConfig(base_url=base_url, mapi_key=mapi_key)
+    from config import CIVIL_NX_BASE_URL, CIVIL_NX_MAPI_KEY
+    resolved_url = base_url or CIVIL_NX_BASE_URL
+    resolved_key = mapi_key or CIVIL_NX_MAPI_KEY
+    config = CivilNXConfig(base_url=resolved_url, mapi_key=resolved_key)
     return CivilNXClient(config)
 
 
 if __name__ == "__main__":
     # ── 설정값 입력 ──────────────────────────
-    BASE_URL = "http://127.0.0.1:8090"   # Civil NX API Settings에서 확인
-    MAPI_KEY = "YOUR_MAPI_KEY_HERE"      # Civil NX API Settings에서 복사
-
-    client = create_client(BASE_URL, MAPI_KEY)
+    from config import get_client
+    client = get_client()
 
     print("=" * 50)
     print(" MIDAS Civil NX API 연결 테스트")
